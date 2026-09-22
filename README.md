@@ -236,3 +236,4 @@ not copy it into target projects, which retain their own ignore policy.
 
 Inspired by dev-team. The dashboard and fingerprint implementation are adapted
 from dev-team, Copyright (c) 2026 David John Smailes, under the [MIT License](LICENSE).
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
