@@ -135,6 +135,37 @@ class SetupTests(ProjectCase):
         self.assertEqual(config['harnesses'][0]['capabilities'], 'Unverified')
         self.assertTrue(config['allocation_accepted'])
 
+    def test_show_displays_persisted_roles_and_optional_absence_without_writes(self):
+        self.install()
+        self.setup('--harness', 'Codex', '--harness', 'Claude', '--accept')
+        config_path = self.project / '.shepherd/project.json'
+        before = config_path.read_bytes()
+        result = self.setup('--show')
+        self.assertIn('Coordinator / Architect: Codex', result.stdout)
+        self.assertIn('Executor: Codex', result.stdout)
+        self.assertIn('Reviewer: Claude', result.stdout)
+        self.assertIn('Sounding Board (optional): Unassigned', result.stdout)
+        self.assertIn('Critical Friend (optional): Unassigned', result.stdout)
+        self.assertIn('not live worker/session identities or readiness evidence', result.stdout)
+        self.assertEqual(config_path.read_bytes(), before)
+
+    def test_show_rejects_missing_invalid_and_mixed_setup_options(self):
+        self.install()
+        self.setup('--show', expected=1)
+        self.assertFalse((self.project / '.shepherd/project.json').exists())
+        self.setup('--harness', 'A', '--accept')
+        config_path = self.project / '.shepherd/project.json'
+        before = config_path.read_bytes()
+        for options in (('--accept',), ('--force',), ('--harness', 'B'),
+                        ('--assign', 'review=A'), ('--preferences', 'local only')):
+            with self.subTest(options=options):
+                self.setup('--show', *options, expected=1)
+                self.assertEqual(config_path.read_bytes(), before)
+        config_path.write_text('{bad json')
+        self.setup('--show', expected=1)
+        config_path.write_text('{"schema_version": 1, "allocation_accepted": false}')
+        self.setup('--show', expected=1)
+
     def test_two_three_and_extra_harness_advice(self):
         for names in (['One', 'Two'], ['Codex', 'Claude', 'Antigravity'], ['A', 'B', 'C', 'D']):
             with self.subTest(names=names):
@@ -222,6 +253,224 @@ class SetupTests(ProjectCase):
         self.assertEqual(list(outside.iterdir()), [])
 
 
+class WorkspaceSetupTests(ProjectCase):
+    def setUp(self):
+        super().setUp()
+        spec = importlib.util.spec_from_file_location('workspace_setup', PACK / 'scripts/setup-workspace.py')
+        self.workspace_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.workspace_module)
+
+    def workspace(self, *args, expected=0, env=None):
+        merged = os.environ.copy()
+        if env:
+            merged.update(env)
+        return subprocess.run([PYTHON, PACK / 'scripts/setup-workspace.py', '--project', self.project,
+                               *args], env=merged, text=True, capture_output=True, check=False)
+
+    def accepted(self, kind='codex'):
+        self.install()
+        self.setup('--harness', 'Codex', '--kind', f'Codex={kind}', '--accept')
+
+    def test_preview_reads_assignments_and_is_mutation_free(self):
+        self.accepted()
+        before = {p.relative_to(self.project): p.read_bytes() for p in self.project.rglob('*') if p.is_file()}
+        result = self.workspace()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('No live changes', result.stdout)
+        self.assertIn('Shepherd architecture', result.stdout)
+        self.assertIn('Ticket Board', result.stdout)
+        self.assertIn('Role Board', result.stdout)
+        self.assertEqual(before, {p.relative_to(self.project): p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
+
+    def test_accept_refuses_outside_herdr_before_cli(self):
+        self.accepted()
+        result = self.workspace('--accept', env={'HERDR_ENV': '0'})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('actual HERDR_ENV=1', result.stderr)
+
+    def test_accept_refuses_unmapped_harness_before_mutation(self):
+        self.accepted()
+        config = self.config()
+        config['harnesses'][0].pop('herdr_kind')
+        (self.project / '.shepherd/project.json').write_text(json.dumps(config))
+        result = self.workspace('--accept', env={'HERDR_ENV': '1'})
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('No Herdr kind mapping', result.stderr)
+
+    def test_observed_layout_area_and_rects_are_validated(self):
+        module = self.workspace_module
+        response = {'result': {'layout': {
+            'area': {'x': 0, 'y': 0, 'width': 120, 'height': 40},
+            'panes': [{'pane_id': 'base', 'rect': {'x': 0, 'y': 0, 'width': 120, 'height': 40}}],
+        }}}
+        self.assertEqual(module.validate_geometry(response, 8), (120.0, 40.0))
+        response['result']['layout']['panes'][0]['rect']['width'] = 10
+        with self.assertRaisesRegex(RuntimeError, 'below usable minimums'):
+            module.validate_geometry(response, 8)
+
+    def test_foreground_shell_child_and_pid_mismatch_are_busy(self):
+        module = self.workspace_module
+        busy = {'result': {'process_info': {'shell_pid': 42, 'foreground_processes': [
+            {'pid': 42, 'command': 'zsh'}, {'pid': 99, 'command': 'python worker.py'}]}}}
+        with self.assertRaisesRegex(RuntimeError, 'multiple foreground'):
+            module.shell_ready(busy, 'p1')
+        mismatch = {'result': {'process_info': {'shell_pid': 42, 'foreground_processes': [
+            {'pid': 99, 'command': 'zsh'}]}}}
+        with self.assertRaisesRegex(RuntimeError, 'differs from shell PID'):
+            module.shell_ready(mismatch, 'p1')
+        unknown = {'result': {'process_info': {'shell_pid': 42, 'foreground_processes': [
+            {'command': 'zsh'}]}}}
+        with self.assertRaisesRegex(RuntimeError, 'unknown foreground process PID'):
+            module.shell_ready(unknown, 'p1')
+
+    def test_created_pane_geometry_uses_captured_layout_shape_and_minimums(self):
+        module = self.workspace_module
+        good = {'result': {'layout': {
+            'area': {'x': 0, 'y': 0, 'width': 245, 'height': 59},
+            'panes': [{'pane_id': 'created-1', 'rect': {'x': 123, 'y': 0, 'width': 122, 'height': 59}}],
+        }}}
+        self.assertEqual(module.validate_created_pane(good, 'created-1'), (122.0, 59.0))
+        undersized = {'result': {'layout': {
+            'area': {'x': 0, 'y': 0, 'width': 245, 'height': 59},
+            'panes': [{'pane_id': 'created-1', 'rect': {'x': 123, 'y': 0, 'width': 15, 'height': 7.38}}],
+        }}}
+        with self.assertRaisesRegex(RuntimeError, 'below usable minimums'):
+            module.validate_created_pane(undersized, 'created-1')
+
+    def test_mocked_accept_uses_explicit_ids_geometry_and_safe_argv(self):
+        self.accepted()
+        module = self.workspace_module
+        help_result = subprocess.CompletedProcess([], 0, 'Usage: pane run <PANE_ID> <COMMAND>... --direction right|down\n', '')
+        start_help = subprocess.CompletedProcess([], 0, '[possible values: codex]\n  --kind <KIND>\n  --pane <ID>', '')
+        responses = []
+        rects = {'base': {'width': 1000.0, 'height': 200.0}}
+        def fake_run(argv, **kwargs):
+            responses.append(argv)
+            if argv[-1] == '--help':
+                if argv[1:3] == ['agent', 'start']:
+                    return start_help
+                return help_result
+            if argv[1:3] == ['pane', 'current']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'pane': {'pane_id': 'base', 'workspace_id': 'ws'}}}), '')
+            if argv[1:3] == ['pane', 'layout']:
+                pane_id = argv[-1]
+                rect = rects[pane_id]
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'layout': {
+                    'area': {'x': 0, 'y': 0, 'width': 1000, 'height': 200},
+                    'panes': [{'pane_id': pane_id, 'rect': {'x': 0, 'y': 0, **rect}}],
+                }}}), '')
+            if argv[1:3] == ['pane', 'list']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'panes': [{'pane_id': 'base'}]}}), '')
+            if argv[1:2] == ['agent']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'agents': []}}), '')
+            if argv[1:3] == ['pane', 'process-info']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'process_info': {'shell_pid': 42, 'foreground_processes': [{'pid': 42, 'command': 'zsh'}]}}}), '')
+            if argv[1:3] == ['pane', 'split']:
+                pane_id = f'p{sum(item[1:3] == ["pane", "split"] for item in responses)}'
+                source = argv[argv.index('--pane') + 1]
+                direction = argv[argv.index('--direction') + 1]
+                source_rect = rects[source]
+                rects[pane_id] = dict(source_rect)
+                if direction == 'right':
+                    rects[source]['width'] /= 2
+                    rects[pane_id]['width'] /= 2
+                else:
+                    rects[source]['height'] /= 2
+                    rects[pane_id]['height'] /= 2
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'pane': {'pane_id': pane_id}}}), '')
+            return subprocess.CompletedProcess(argv, 0, '', '')
+        with mock.patch.dict(os.environ, {'HERDR_ENV': '1'}), mock.patch.object(module.shutil, 'which', return_value='/bin/herdr'), mock.patch.object(module.subprocess, 'run', side_effect=fake_run):
+            self.assertEqual(module.execute(self.config_with_launcher(), self.project, 'herdr'), 0)
+        splits = [argv for argv in responses if argv[1:3] == ['pane', 'split'] and '--direction' in argv]
+        self.assertEqual([argv[argv.index('--direction') + 1] for argv in splits], ['right', 'down', 'right', 'down', 'right', 'down', 'right', 'down'])
+        self.assertLess(rects['p9']['height'], 200)
+        self.assertGreaterEqual(min(rect['width'] for rect in rects.values()), module.MIN_WIDTH)
+        self.assertTrue(any(argv[1:3] == ['pane', 'run'] and str(self.project) in ' '.join(argv) for argv in responses))
+
+    def test_mocked_accept_rejects_realistic_shrinking_split_before_board_run(self):
+        self.accepted()
+        module = self.workspace_module
+        help_result = subprocess.CompletedProcess([], 0, 'pane run --direction right|down\n', '')
+        start_help = subprocess.CompletedProcess([], 0, '[possible values: codex]\n  --kind <KIND>\n  --pane <ID>', '')
+        responses = []
+        rects = {'base': {'width': 245.0, 'height': 59.0}}
+        def fake_run(argv, **kwargs):
+            responses.append(argv)
+            if argv[-1] == '--help':
+                return start_help if argv[1:3] == ['agent', 'start'] else help_result
+            if argv[1:3] == ['pane', 'current']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'pane': {'pane_id': 'base', 'workspace_id': 'ws'}}}), '')
+            if argv[1:3] == ['pane', 'layout']:
+                pane_id = argv[-1]
+                rect = rects[pane_id]
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'layout': {
+                    'area': {'x': 0, 'y': 0, 'width': 245, 'height': 59},
+                    'panes': [{'pane_id': pane_id, 'rect': {'x': 0, 'y': 0, **rect}}],
+                }}}), '')
+            if argv[1:3] == ['pane', 'list']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'panes': [{'pane_id': 'base'}]}}), '')
+            if argv[1:2] == ['agent']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'agents': []}}), '')
+            if argv[1:3] == ['pane', 'process-info']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'process_info': {'shell_pid': 42, 'foreground_processes': [{'pid': 42, 'command': 'zsh'}]}}}), '')
+            if argv[1:3] == ['pane', 'split']:
+                pane_id = f'p{sum(item[1:3] == ["pane", "split"] for item in responses)}'
+                source = argv[argv.index('--pane') + 1]
+                direction = argv[argv.index('--direction') + 1]
+                source_rect = rects[source]
+                rects[pane_id] = dict(source_rect)
+                if direction == 'right':
+                    rects[source]['width'] /= 2
+                    rects[pane_id]['width'] /= 2
+                else:
+                    rects[source]['height'] /= 2
+                    rects[pane_id]['height'] /= 2
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'pane': {'pane_id': pane_id}}}), '')
+            return subprocess.CompletedProcess(argv, 0, '', '')
+        with mock.patch.dict(os.environ, {'HERDR_ENV': '1'}), mock.patch.object(module.shutil, 'which', return_value='/bin/herdr'), mock.patch.object(module.subprocess, 'run', side_effect=fake_run):
+            with self.assertRaisesRegex(RuntimeError, 'Created pane geometry is unusable'):
+                module.execute(self.config_with_launcher(), self.project, 'herdr')
+        self.assertFalse(any(argv[1:3] == ['pane', 'run'] and 'render-ticket-dashboard.py' in ' '.join(argv)
+                           for argv in responses))
+
+    def config_with_launcher(self):
+        config = self.config()
+        config['harnesses'][0]['executable'] = 'codex'
+        return config
+
+    def test_mocked_partial_failure_reports_created_ids_and_diagnostic(self):
+        self.accepted()
+        module = self.workspace_module
+        def fake_run(argv, **kwargs):
+            if argv[-1] == '--help':
+                text = '[possible values: codex] --kind <KIND> --pane <ID>' if argv[1:3] == ['agent', 'start'] else 'pane run --direction'
+                return subprocess.CompletedProcess(argv, 0, text, '')
+            if argv[1:3] == ['pane', 'current']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'pane': {'pane_id': 'base', 'workspace_id': 'ws'}}}), '')
+            if argv[1:3] == ['pane', 'layout']:
+                pane_id = argv[-1]
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'layout': {
+                    'area': {'x': 0, 'y': 0, 'width': 120, 'height': 40},
+                    'panes': [{'pane_id': pane_id, 'rect': {'x': 0, 'y': 0, 'width': 120, 'height': 40}}],
+                }}}), '')
+            if argv[1:3] == ['pane', 'list']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'panes': [{'pane_id': 'base'}]}}), '')
+            if argv[1:2] == ['agent']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'agents': []}}), '')
+            if argv[1:3] == ['pane', 'process-info']:
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'process_info': {'shell_pid': 42, 'foreground_processes': [{'pid': 42, 'command': 'zsh'}]}}}), '')
+            if argv[1:3] == ['pane', 'split']:
+                if any(item[1:3] == ['pane', 'split'] for item in calls):
+                    return subprocess.CompletedProcess(argv, 1, '', 'split denied')
+                calls.append(argv)
+                return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'pane': {'pane_id': 'created-1'}}}), '')
+            return subprocess.CompletedProcess(argv, 0, '', '')
+        calls = []
+        with mock.patch.dict(os.environ, {'HERDR_ENV': '1'}), mock.patch.object(module.shutil, 'which', return_value='/bin/herdr'), mock.patch.object(module.subprocess, 'run', side_effect=fake_run):
+            with self.assertRaisesRegex(RuntimeError, r'created pane IDs: \[.created-1.\].*split denied'):
+                module.execute(self.config_with_launcher(), self.project, 'herdr')
+
+
 class DashboardTests(ProjectCase):
     def setUp(self):
         super().setUp()
@@ -250,6 +499,20 @@ class DashboardTests(ProjectCase):
         self.dashboard('--validate', expected=1)
         (self.project / '.tickets/queue.md').unlink()
         self.dashboard('--validate', expected=1)
+
+    def test_superseded_is_valid_terminal_state_in_all_projections(self):
+        self.ticket('Superseded')
+        self.dashboard('--validate')
+        self.dashboard()
+        html = (self.project / 'docs/tickets.html').read_text()
+        markdown = (self.project / 'docs/tickets.md').read_text()
+        self.assertIn('data-state="Superseded"', html)
+        self.assertIn('state-superseded', html)
+        self.assertIn('Superseded', markdown)
+        self.assertIn('- **Superseded:** 1', markdown)
+        terminal = self.dashboard('--terminal', '--width', '120', '--height', '12')
+        self.assertIn('Superseded', terminal.stdout)
+        self.assertIn('0 active', terminal.stdout)
 
 
 class FingerprintTests(ProjectCase):

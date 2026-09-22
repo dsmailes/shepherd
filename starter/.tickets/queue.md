@@ -15,3 +15,5 @@
 ## Done
 
 ## Blocked
+
+## Superseded

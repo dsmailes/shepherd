@@ -23,6 +23,41 @@ Live control requires `HERDR_ENV=1` in the actual coordinator environment and a
 reachable local workspace/API. Do not set the variable just to bypass this gate.
 Outside Herdr, read/plan locally; block live coordination or use an explicitly
 agreed manual independent-session workflow with its limitations disclosed.
+
+The installed workspace helper follows this contract:
+
+```sh
+python3 scripts/setup-workspace.py --project .
+python3 scripts/setup-workspace.py --project . --accept
+```
+
+The first command is a no-mutation preview. The second requires the actual Herdr
+environment, verifies `pane split`, `pane run`, and `agent start` help, reads an
+explicit current pane/workspace identity, and creates role plus read-only board
+panes. It requires `herdr_kind` mappings; there is no guessed launcher or
+fallback. Before mutation it validates supported kind values and executable
+availability, inventories live agents for role-name conflicts, and checks each
+existing pane for an available shell. Splits alternate geometry-aware directions
+and preserve focus. Pane creation and launches are sequential; failures stop
+without a duplicate retry and include created pane IDs plus CLI diagnostics.
+Unobserved model telemetry is reported as `Unavailable`.
+
+Each dispatched role gets a dedicated pane and observed session binding. Optional
+roles get a pane only when the ticket activates them. Ticket and role boards are
+separate read-only panes. The setup helper records the created pane IDs in its
+diagnostics; the coordinator records each pane's creating ticket, role and
+observed worker/session binding in the external assignment manifest. A label or
+idle state never establishes ownership.
+
+Cleanup is a report-only operation until the closing ticket has a scoped
+completion marker, captured its evidence, Admin has recorded the completion, and
+the worker/session is observed quiescent. Run `scripts/pane-lifecycle.py` against
+the observed inventory to obtain candidates. Close only returned role-pane IDs,
+one at a time, after rechecking the same IDs. Keep board panes until Done and
+preserve unrelated, existing, ambiguous, or blocked-diagnostic panes. A partial
+close failure stops the cleanup and retains the remaining IDs and diagnostics;
+reconcile ownership and quiescence before any later attempt. The helper never
+closes panes or retries a failed close.
 Read the installed built-in skill before control and inspect command-group help
 before using any subcommand. This pack deliberately ships no guessed launch or
 prompt commands. Discovery above does not launch agents.

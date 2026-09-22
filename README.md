@@ -48,13 +48,24 @@ cd /absolute/path/to/shepherd
 # Continue from the target project, using its installed helpers.
 cd /absolute/path/to/project
 python3 scripts/setup-shepherd.py --project .
+python3 scripts/setup-shepherd.py --project . --show
 python3 scripts/render-ticket-dashboard.py --project . --terminal
+python3 scripts/setup-workspace.py --project .
 ```
 
 Setup interactively asks which harnesses you can access, offers role assignments
-and saves your accepted choices. Use `--help` for noninteractive options. If the
+and saves your accepted choices. `--show` displays the saved role-to-harness
+allocations without writing files or checking runtime workers; absent optional
+roles appear as Unassigned. These persisted choices do not establish live worker
+identities or readiness. Use `--help` for noninteractive options. If the
 target is not already a Git repository, initialize it before using source
 fingerprints. Installation does not initialize Git, commit files or push anything.
+
+The workspace helper previews one pane for every assigned role plus read-only
+ticket and role boards. Review the plan, then pass `--accept` from the actual
+Herdr environment (`HERDR_ENV=1`). It verifies installed Herdr help and explicit
+pane/workspace identities, preserves focus where possible, stops on a failed
+launch without retrying, and reports unobserved model telemetry as `Unavailable`.
 
 Alternatively, install from the target directory with an absolute pack path:
 

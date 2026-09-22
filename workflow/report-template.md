@@ -4,11 +4,14 @@ Aim for 150–300 words; expand for material risk. Link the shared assignment ma
 and detailed logs instead of copying the ticket or other workers' identities.
 
 - Binding: <external manifest link and own ticket/role/attempt/generation entry>
+- Pane ownership: <stable pane ID, role, creating ticket, ownership provenance,
+  observed worker/session binding; board pane or role pane>
 - Verdict: <Ready for review / Pass / Fail / Blocked; advisory roles: findings>
 - Result: <changes or scope inspected; acceptance covered; actionable findings>
 - Target: <command/declaration and before/after JSON links, or immutable commit>
 - Checks: <exact commands, exit codes and output links; limitations>
-- Next gate / risks: <recommendation, blockers or untested behavior; no board writes>
+- Next gate / risks: <recommendation, blockers or untested behavior; cleanup is
+  report-only until marker, evidence, Admin recording and quiescence are confirmed; no board writes>
 - Self-visible telemetry: <worker identity, model, effort, tokens: Unavailable for
   each unless observed; selection reason/activation and changes if observed>
 - Effort: <elapsed time and correction round; no estimated hidden token usage>

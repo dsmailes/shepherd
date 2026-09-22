@@ -16,7 +16,7 @@ import unicodedata
 from pathlib import Path
 
 
-STATES = ["Backlog", "Ready", "Design", "In Progress", "Review", "Test", "Done", "Blocked"]
+STATES = ["Backlog", "Ready", "Design", "In Progress", "Review", "Test", "Done", "Blocked", "Superseded"]
 
 
 def read_text(path: Path) -> str:
@@ -230,7 +230,7 @@ def collect_dashboard_data(project: Path, output: Path) -> dict[str, object]:
 
     generated_at = _datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     total_tickets = len(tickets)
-    active_count = sum(counts[state] for state in STATES if state != "Done")
+    active_count = sum(counts[state] for state in STATES if state not in {"Done", "Superseded"})
     blocked_count = counts["Blocked"]
 
     return {
@@ -487,6 +487,7 @@ def render_dashboard(project: Path, output: Path, markdown_output: Path | None =
 
     .state-blocked {{ background: #f6dce3; color: var(--blocked); }}
     .state-done {{ background: #dceedd; color: var(--done); }}
+    .state-superseded {{ background: #e3e0f2; color: #554c86; }}
     .state-unknown {{ background: #ede5d8; color: #695a42; }}
 
     .progress {{
@@ -797,11 +798,11 @@ def render_terminal(project: Path, data: dict[str, object], width: int, height: 
     columns, rows = max(1, width - 1), max(1, height - 1)
     tickets = data["tickets"]
     warnings = data["warnings"]
-    priority = ["Blocked", "In Progress", "Review", "Test", "Ready", "Design", "Backlog"]
+    priority = ["Blocked", "In Progress", "Review", "Test", "Ready", "Design", "Backlog", "Superseded", "Done"]
     ordered = sorted(tickets, key=lambda ticket: (
         priority.index(ticket["state"]) if ticket["state"] in priority else
         len(priority) + (ticket["state"] == "Done"), str(ticket["id"])))
-    active = sum(ticket["state"] != "Done" for ticket in tickets)
+    active = sum(ticket["state"] not in {"Done", "Superseded"} for ticket in tickets)
     blocked = sum(ticket["state"] == "Blocked" for ticket in tickets)
     lines = [f"Shepherd | {project.name}",
              f"{len(tickets)} tickets | {active} active | {blocked} blocked | {len(warnings)} warnings"]

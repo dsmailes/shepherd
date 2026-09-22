@@ -43,7 +43,8 @@ def main():
     for source in sorted((pack / "workflow").glob("*.md")):
         manifest[Path(".shepherd") / source.name] = source
     manifest[Path(".shepherd/LICENSE")] = pack / "LICENSE"
-    for name in ("render-ticket-dashboard.py", "source-fingerprint.py", "setup-shepherd.py", "doctor-shepherd.py"):
+    for name in ("render-ticket-dashboard.py", "source-fingerprint.py", "setup-shepherd.py", "setup-workspace.py",
+                 "assignment-report.py", "pane-lifecycle.py", "doctor-shepherd.py"):
         manifest[Path("scripts") / name] = pack / "scripts" / name
     generated = [Path("docs/tickets.md"), Path("docs/tickets.html")]
     try:

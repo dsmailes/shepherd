@@ -8,6 +8,13 @@ Shepherd does not claim any Antigravity instruction auto-discovery convention.
 python3 scripts/setup-shepherd.py --project .
 ```
 
+To inspect an already accepted allocation without rerunning setup, use
+`python3 scripts/setup-shepherd.py --project . --show`. This reads
+`.shepherd/project.json`, prints every canonical role (including optional roles
+as Unassigned when absent), and makes no changes. It reports persisted harness
+choices only; it does not identify live workers or sessions, probe runtimes, or
+establish readiness. `--show` cannot be combined with setup options.
+
 Interactive setup asks which harnesses/agents the user can access, optional tools
 and limits, role strengths, and optional explicit launcher/Herdr kind mappings. It shows the suggested map, permits role overrides,
 then asks for acceptance before writing `.shepherd/project.json`.

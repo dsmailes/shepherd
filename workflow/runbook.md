@@ -46,6 +46,14 @@
    Capture evidence before cleaning only named disposable worktrees/artifacts;
    retain failed/blocked artifacts. Write durable findings to `.memory/` only.
 
+9. **Clean up owned panes.** After Admin records completion, capture the final
+   report/fingerprint and confirm the worker/session is quiescent. Generate the
+   read-only close plan with `scripts/pane-lifecycle.py`; close only role panes
+   whose observed `creating_ticket` exactly matches the ticket and whose
+   ownership is `ticket-created`. Recheck each pane ID immediately before a
+   close. Keep ticket/role board panes until Done. On any uncertainty or partial
+   failure, stop, preserve diagnostics and reconcile; never retry blindly.
+
 Only `.tickets/*.md` plus `.tickets/queue.md` hold live state. Keep `## State` to one
 exact lifecycle token; put explanations in other sections. When a board update
 cannot finish, stop other writes, reconcile ticket and queue, regenerate and

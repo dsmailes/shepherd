@@ -34,6 +34,14 @@ identical declarations and hashes. Stop on changes; Executor must re-freeze and
 all affected approvals restart. Read the excluded active ticket independently;
 acceptance/scope changes invalidate approval even when the source hash is unchanged.
 
+Pane ownership is part of the handoff evidence: record the stable pane ID, role,
+creating ticket, ownership provenance (`ticket-created`), observed worker/session
+binding, and whether the pane is a role or read-only board pane. Cleanup order is
+completion marker → evidence capture → Admin recording → observed quiescence →
+read-only close plan → per-pane recheck and close. Missing provenance, unrelated
+or existing panes, board panes, blocked diagnostics, and any partial failure are
+preserved.
+
 ## Transition gates
 
 | Transition | Required evidence |
