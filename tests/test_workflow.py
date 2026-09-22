@@ -278,9 +278,20 @@ class WorkspaceSetupTests(ProjectCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('No live changes', result.stdout)
         self.assertIn('Shepherd architecture', result.stdout)
+        self.assertIn('Lazygit', result.stdout)
         self.assertIn('Ticket Board', result.stdout)
         self.assertIn('Role Board', result.stdout)
         self.assertEqual(before, {p.relative_to(self.project): p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
+
+    def test_preview_defers_unrequested_role_panes(self):
+        self.accepted()
+        result = self.workspace()
+        self.assertNotIn('Shepherd implementation', result.stdout)
+        self.assertNotIn('Shepherd review', result.stdout)
+        result = self.workspace('--role', 'implementation', '--role', 'review')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Shepherd implementation', result.stdout)
+        self.assertIn('Shepherd review', result.stdout)
 
     def test_accept_refuses_outside_herdr_before_cli(self):
         self.accepted()
@@ -384,12 +395,14 @@ class WorkspaceSetupTests(ProjectCase):
         with mock.patch.dict(os.environ, {'HERDR_ENV': '1'}), mock.patch.object(module.shutil, 'which', return_value='/bin/herdr'), mock.patch.object(module.subprocess, 'run', side_effect=fake_run):
             self.assertEqual(module.execute(self.config_with_launcher(), self.project, 'herdr'), 0)
         splits = [argv for argv in responses if argv[1:3] == ['pane', 'split'] and '--direction' in argv]
-        self.assertEqual([argv[argv.index('--direction') + 1] for argv in splits], ['right', 'down', 'right', 'down', 'right', 'down', 'right', 'down'])
-        self.assertLess(rects['p9']['height'], 200)
+        directions = [argv[argv.index('--direction') + 1] for argv in splits]
+        self.assertEqual(directions, ['right', 'down', 'right', 'down'])
+        self.assertLess(min(rect['height'] for name, rect in rects.items() if name != 'base'), 200)
         self.assertGreaterEqual(min(rect['width'] for rect in rects.values()), module.MIN_WIDTH)
+        self.assertTrue(any(argv[1:3] == ['pane', 'run'] and 'lazygit' in ' '.join(argv) for argv in responses))
         self.assertTrue(any(argv[1:3] == ['pane', 'run'] and str(self.project) in ' '.join(argv) for argv in responses))
 
-    def test_mocked_accept_rejects_realistic_shrinking_split_before_board_run(self):
+    def test_mocked_accept_balances_roles_before_board_run(self):
         self.accepted()
         module = self.workspace_module
         help_result = subprocess.CompletedProcess([], 0, 'pane run --direction right|down\n', '')
@@ -430,10 +443,9 @@ class WorkspaceSetupTests(ProjectCase):
                 return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'pane': {'pane_id': pane_id}}}), '')
             return subprocess.CompletedProcess(argv, 0, '', '')
         with mock.patch.dict(os.environ, {'HERDR_ENV': '1'}), mock.patch.object(module.shutil, 'which', return_value='/bin/herdr'), mock.patch.object(module.subprocess, 'run', side_effect=fake_run):
-            with self.assertRaisesRegex(RuntimeError, 'Created pane geometry is unusable'):
-                module.execute(self.config_with_launcher(), self.project, 'herdr')
-        self.assertFalse(any(argv[1:3] == ['pane', 'run'] and 'render-ticket-dashboard.py' in ' '.join(argv)
-                           for argv in responses))
+            self.assertEqual(module.execute(self.config_with_launcher(), self.project, 'herdr'), 0)
+        self.assertTrue(any(argv[1:3] == ['pane', 'run'] and 'render-ticket-dashboard.py' in ' '.join(argv)
+                          for argv in responses))
 
     def config_with_launcher(self):
         config = self.config()

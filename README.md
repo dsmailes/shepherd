@@ -61,11 +61,17 @@ identities or readiness. Use `--help` for noninteractive options. If the
 target is not already a Git repository, initialize it before using source
 fingerprints. Installation does not initialize Git, commit files or push anything.
 
-The workspace helper previews one pane for every assigned role plus read-only
-ticket and role boards. Review the plan, then pass `--accept` from the actual
-Herdr environment (`HERDR_ENV=1`). It verifies installed Herdr help and explicit
-pane/workspace identities, preserves focus where possible, stops on a failed
-launch without retrying, and reports unobserved model telemetry as `Unavailable`.
+The workspace helper creates the main Architect pane, lazygit, and read-only
+Ticket and Role Boards. Role panes are ticket-scoped and deferred by default;
+activate only the roles needed for the current ticket with repeated options such
+as `--role implementation --role review`. On an idle current shell it uses that
+pane as the main Architect panel, puts lazygit at the bottom left and the Ticket
+Board at the bottom right. If the current pane is busy, it leaves it untouched
+and creates the Architect pane instead. Review the plan, then pass `--accept`
+from the actual Herdr environment (`HERDR_ENV=1`). It verifies installed Herdr
+help and explicit pane/workspace identities, preserves focus where possible,
+stops on a failed launch without retrying, and reports unobserved model
+telemetry as `Unavailable`.
 
 Alternatively, install from the target directory with an absolute pack path:
 

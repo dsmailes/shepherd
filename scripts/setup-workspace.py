@@ -54,16 +54,22 @@ def argv_text(argv: tuple[str, ...] | list[str]) -> str:
     return json.dumps(list(argv), ensure_ascii=False)
 
 
-def plan(config: dict, project: Path) -> list[dict]:
+def plan(config: dict, project: Path, active_roles: list[str] | tuple[str, ...] = ()) -> list[dict]:
     assignments = config["assignments"]
+    active = set(active_roles) | {"architecture"}
     panes = []
+    if "architecture" in assignments and "architecture" in active:
+        panes.append({"name": "Shepherd architecture", "role": "architecture",
+                      "harness": assignments["architecture"],
+                      "kind": _kind(config, assignments["architecture"])})
+    panes += [{"name": "Lazygit", "utility": "lazygit"},
+              {"name": "Ticket Board", "board": "ticket"}]
     for role in ALL_ROLES:
-        if role in assignments:
-            panes.append({"name": f"Shepherd {role}", "role": role, "harness": assignments[role], "kind": _kind(config, assignments[role])})
-    panes += [
-        {"name": "Ticket Board", "board": "ticket"},
-        {"name": "Role Board", "board": "role"},
-    ]
+        if role in assignments and role != "architecture" and role in active:
+            panes.append({"name": f"Shepherd {role}", "role": role,
+                          "harness": assignments[role],
+                          "kind": _kind(config, assignments[role])})
+    panes.append({"name": "Role Board", "board": "role"})
     return panes
 
 
@@ -74,13 +80,16 @@ def _kind(config: dict, harness: str) -> str | None:
     return None
 
 
-def print_plan(config: dict, project: Path, herdr: str) -> None:
+def print_plan(config: dict, project: Path, herdr: str, active_roles: list[str] | tuple[str, ...] = ()) -> None:
     print(f"Workspace setup preview for {project.resolve()}")
     print("No live changes are made without --accept and HERDR_ENV=1.")
-    print("Layout: measured at acceptance, then balanced across explicit right/down regions; existing focus is preserved.")
-    for index, item in enumerate(plan(config, project)):
-        direction = "right" if index % 2 == 0 else "down"
-        if "board" in item:
+    print("Layout: main Architect pane with lazygit, Ticket Board and Role Board; role panes are deferred until activated with --role.")
+    print("Active roles: " + ", ".join(dict.fromkeys(["architecture", *active_roles])))
+    for index, item in enumerate(plan(config, project, active_roles)):
+        direction = "down" if item.get("utility") == "lazygit" else "right"
+        if item.get("utility") == "lazygit":
+            command = (herdr, "pane", "run", "<new-pane-id>", "lazygit")
+        elif "board" in item:
             command = (herdr, "pane", "run", "<new-pane-id>", shlex.join(("python3",
                        "scripts/render-ticket-dashboard.py" if item["board"] == "ticket" else "scripts/setup-shepherd.py",
                        "--project", str(project), "--watch" if item["board"] == "ticket" else "--show")))
@@ -222,12 +231,13 @@ def validate_created_pane(response: dict, pane_id: str, board: bool = False) -> 
     raise RuntimeError(f"Pane {pane_id} was absent from measured layout")
 
 
-def execute(config: dict, project: Path, herdr: str) -> int:
+def execute(config: dict, project: Path, herdr: str, active_roles: list[str] | tuple[str, ...] = ()) -> int:
     if os.environ.get("HERDR_ENV") != "1":
         raise RuntimeError("Live workspace setup requires the actual HERDR_ENV=1 context")
     if not shutil.which(herdr) and not Path(herdr).is_file():
         raise RuntimeError(f"Herdr executable not found: {herdr}")
-    role_items = [item for item in plan(config, project) if "role" in item]
+    workspace_plan = plan(config, project, active_roles)
+    role_items = [item for item in workspace_plan if "role" in item]
     missing = sorted({item["harness"] for item in role_items if not item["kind"]})
     if missing:
         raise RuntimeError("No Herdr kind mapping for assigned harnesses: " + ", ".join(missing))
@@ -254,7 +264,7 @@ def execute(config: dict, project: Path, herdr: str) -> int:
     geometry = json_command(herdr, ["pane", "layout", "--pane", base])
     layout_data = layout_geometry(geometry)
     observed_panes = layout_data[1] if layout_data else None
-    size = validate_geometry(geometry, len(plan(config, project)) + max(1, len(observed_panes or [])))
+    size = validate_geometry(geometry, len(workspace_plan) + max(1, len(observed_panes or [])))
     panes = json_command(herdr, ["pane", "list", "--workspace", workspace]).get("result", {}).get("panes", [])
     agents = json_command(herdr, ["agent", "list"]).get("result", {}).get("agents", [])
     requested_names = {item["role"] for item in role_items}
@@ -262,18 +272,50 @@ def execute(config: dict, project: Path, herdr: str) -> int:
     conflicts = sorted(requested_names & existing_names)
     if conflicts:
         raise RuntimeError("Live agent name conflict(s): " + ", ".join(conflicts))
-    # Existing panes are not targets of this operation. We split only from
-    # the selected base pane and validate each newly created pane before using
-    # it. Do not inspect unrelated panes here: the coordinator may be launched
-    # from a busy Codex/Herdr pane, and Herdr focus can report a different pane
-    # than the caller that started this process.
+    # Existing panes are not targets of this operation. We inspect only the
+    # selected base pane to see whether an idle shell can safely become the
+    # main Architect pane; unrelated panes may be busy workers.
+    reuse_base = False
+    if any(item.get("role") == "architecture" for item in workspace_plan):
+        try:
+            shell_ready(json_command(herdr, ["pane", "process-info", "--pane", base]), base)
+            reuse_base = True
+        except RuntimeError:
+            reuse_base = False
     print(f"Using workspace {workspace}, base pane {base}, observed layout {size[0]:g}x{size[1]:g}; balanced split plan preserves focus.")
     created = []
     created_specs = []
+    created_by_name = {}
+    pane_widths = {base: size[0]}
+    pane_heights = {base: size[1]}
+    role_region = []
     launched = []
-    for index, item in enumerate(plan(config, project)):
-        source = base if index < 2 else created[index - 2]
-        direction = "right" if index % 2 == 0 else "down"
+    for index, item in enumerate(workspace_plan):
+        if reuse_base and item.get("role") == "architecture":
+            pane_id = base
+            created_by_name[item["name"]] = pane_id
+            role_region.append(pane_id)
+            run = subprocess.run([herdr, "agent", "start", item["role"], "--kind", item["kind"], "--pane", pane_id],
+                                 capture_output=True, text=True, timeout=40)
+            if run.returncode:
+                detail = (run.stderr or run.stdout).strip()
+                raise RuntimeError(f"Launch failed for {item['name']} in pane {pane_id}; diagnostic: {detail}")
+            launched.append(pane_id)
+            print(f"Using {item['name']} in existing main pane {pane_id}; model: Unavailable (worker telemetry not inferred).")
+            continue
+
+        if item.get("utility") == "lazygit":
+            source, direction = base, "down"
+        elif item.get("board") == "ticket":
+            source, direction = created_by_name["Lazygit"], "right"
+        elif item.get("board") == "role":
+            if not role_region:
+                role_region.append(base)
+            source, direction = max(role_region, key=lambda pane_id: pane_widths.get(pane_id, 0)), "down"
+        else:
+            if not role_region:
+                role_region.append(base)
+            source, direction = max(role_region, key=lambda pane_id: pane_widths.get(pane_id, 0)), "right"
         try:
             split = subprocess.run([herdr, "pane", "split", "--pane", source, "--direction", direction, "--no-focus", "--cwd", str(project)], capture_output=True, text=True, timeout=20)
         except subprocess.TimeoutExpired as exc:
@@ -288,6 +330,7 @@ def execute(config: dict, project: Path, herdr: str) -> int:
         if not pane_id:
             raise RuntimeError(f"Pane split returned no explicit pane identity for {item['name']}; created pane IDs: {created or 'none'}; launched: {launched or 'none'}")
         created.append(pane_id)
+        created_by_name[item["name"]] = pane_id
         created_specs.append((pane_id, "board" in item))
         try:
             # Split direction is only a request; gate each created pane on its
@@ -295,22 +338,35 @@ def execute(config: dict, project: Path, herdr: str) -> int:
             for measured_id, is_board in created_specs:
                 measured = json_command(herdr, ["pane", "layout", "--pane", measured_id])
                 validate_created_pane(measured, measured_id, is_board)
+            measured_rect = layout_geometry(measured)[1]
+            rect = next((entry.get("rect") for entry in measured_rect
+                         if isinstance(entry, dict) and (entry.get("pane_id") or entry.get("id")) == pane_id), None)
+            if isinstance(rect, dict):
+                pane_widths[pane_id] = float(rect.get("width", 0))
+                pane_heights[pane_id] = float(rect.get("height", 0))
+            if direction == "right":
+                pane_widths[source] = pane_widths[pane_id]
+            else:
+                pane_heights[source] = pane_heights[pane_id]
         except RuntimeError as exc:
             raise RuntimeError(
                 f"Created pane geometry is unusable for {item['name']}; created pane IDs: {created}; "
                 f"launched: {launched or 'none'}; diagnostic: {exc}; no retry was attempted"
             ) from exc
-        if "board" in item:
+        if item.get("utility") == "lazygit" or "board" in item:
             try:
                 shell_ready(json_command(herdr, ["pane", "process-info", "--pane", pane_id]), pane_id)
             except RuntimeError as exc:
                 raise RuntimeError(f"New board pane {pane_id} is not ready; created pane IDs: {created}; launched: {launched or 'none'}; diagnostic: {exc}") from exc
-        if "board" in item:
+        if item.get("utility") == "lazygit":
+            command = ["lazygit"]
+        elif "board" in item:
             command = ["python3", "scripts/render-ticket-dashboard.py" if item["board"] == "ticket" else "scripts/setup-shepherd.py", "--project", str(project), "--watch" if item["board"] == "ticket" else "--show"]
+        if item.get("utility") == "lazygit" or "board" in item:
             try:
                 run = subprocess.run([herdr, "pane", "run", pane_id, shlex.join(command)], capture_output=True, text=True, timeout=20)
             except subprocess.TimeoutExpired as exc:
-                raise RuntimeError(f"Board command timed out in pane {pane_id}; created pane IDs: {created}; launched: {launched or 'none'}; diagnostic: {exc.stderr or 'timeout'}; no retry was attempted") from exc
+                raise RuntimeError(f"Utility/board command timed out in pane {pane_id}; created pane IDs: {created}; launched: {launched or 'none'}; diagnostic: {exc.stderr or 'timeout'}; no retry was attempted") from exc
         else:
             if not item["kind"]:
                 raise RuntimeError(f"No Herdr kind mapping for assigned harness {item['harness']}")
@@ -322,6 +378,8 @@ def execute(config: dict, project: Path, herdr: str) -> int:
             detail = (run.stderr or run.stdout).strip()
             raise RuntimeError(f"Launch failed for {item['name']} in pane {pane_id}; created pane IDs: {created}; launched: {launched or 'none'}; diagnostic: {detail}; no duplicate retry was attempted")
         launched.append(pane_id)
+        if "role" in item:
+            role_region.append(pane_id)
         print(f"Created {item['name']} in pane {pane_id}; model: Unavailable (worker telemetry not inferred).")
     return 0
 
@@ -330,15 +388,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, default=Path("."))
     parser.add_argument("--herdr", default="herdr")
+    parser.add_argument("--role", action="append", choices=ALL_ROLES, default=[],
+                        help="Activate a ticket-scoped role pane; repeat for multiple roles")
     parser.add_argument("--accept", action="store_true", help="Execute the reviewed plan in the current Herdr workspace")
     args = parser.parse_args()
     try:
         config, _ = load_config(args.project)
         project = args.project.resolve()
         if not args.accept:
-            print_plan(config, project, args.herdr)
+            print_plan(config, project, args.herdr, args.role)
             return 0
-        return execute(config, project, args.herdr)
+        return execute(config, project, args.herdr, args.role)
     except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
         parser.exit(1, f"Workspace setup stopped: {exc}\n")
 

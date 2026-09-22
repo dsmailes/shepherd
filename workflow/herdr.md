@@ -33,14 +33,18 @@ python3 scripts/setup-workspace.py --project . --accept
 
 The first command is a no-mutation preview. The second requires the actual Herdr
 environment, verifies `pane split`, `pane run`, and `agent start` help, reads an
-explicit current pane/workspace identity, and creates role plus read-only board
-panes. It requires `herdr_kind` mappings; there is no guessed launcher or
-fallback. Before mutation it validates supported kind values and executable
-availability, inventories live agents for role-name conflicts, and checks each
-existing pane for an available shell. Splits alternate geometry-aware directions
-and preserve focus. Pane creation and launches are sequential; failures stop
-without a duplicate retry and include created pane IDs plus CLI diagnostics.
-Unobserved model telemetry is reported as `Unavailable`.
+explicit current pane/workspace identity, and creates the Architect, lazygit and
+read-only board panes. Role panes are deferred until the current ticket
+activates them, using repeated options such as
+`--role implementation --role review`. An idle current shell becomes the main
+Architect pane; lazygit and the Ticket Board occupy the bottom row. A busy
+current pane is left untouched and receives a separate Architect pane. It
+requires `herdr_kind` mappings; there is no guessed launcher
+or fallback. Before mutation it validates supported kind values and executable
+availability, inventories live agents for role-name conflicts, and validates
+only panes created by this run. Pane creation and launches are sequential;
+failures stop without a duplicate retry and include created pane IDs plus CLI
+diagnostics. Unobserved model telemetry is reported as `Unavailable`.
 
 Each dispatched role gets a dedicated pane and observed session binding. Optional
 roles get a pane only when the ticket activates them. Ticket and role boards are
