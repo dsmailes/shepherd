@@ -232,8 +232,7 @@ execution reports and build artifacts outside the source tree as required by the
 workflow. This root `.gitignore` is for developing Shepherd; the installer does
 not copy it into target projects, which retain their own ignore policy.
 
-## Attribution
+## License
 
-Inspired by dev-team. The dashboard and fingerprint implementation are adapted
-from dev-team, Copyright (c) 2026 David John Smailes, under the [MIT License](LICENSE).
+Shepherd is available under the [MIT License](LICENSE).
 See [SECURITY.md](SECURITY.md) for vulnerability reporting.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render static or terminal dashboards. Adapted from dev-team; see ../LICENSE (MIT)."""
+"""Render static or terminal dashboards."""
 
 from __future__ import annotations
 

@@ -7,7 +7,7 @@ import re
 import stat
 import subprocess
 
-# Adapted from dev-team, Copyright (c) 2026 David John Smailes; see ../LICENSE.
+# Licensed under the MIT License; see ../LICENSE.
 class PolicyError(ValueError):
     pass
 
