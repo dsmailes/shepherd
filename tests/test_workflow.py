@@ -364,6 +364,8 @@ class WorkspaceSetupTests(ProjectCase):
             if argv[1:2] == ['agent']:
                 return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'agents': []}}), '')
             if argv[1:3] == ['pane', 'process-info']:
+                if argv[-1] == 'base':
+                    return subprocess.CompletedProcess(argv, 1, '', 'busy coordinator pane')
                 return subprocess.CompletedProcess(argv, 0, json.dumps({'result': {'process_info': {'shell_pid': 42, 'foreground_processes': [{'pid': 42, 'command': 'zsh'}]}}}), '')
             if argv[1:3] == ['pane', 'split']:
                 pane_id = f'p{sum(item[1:3] == ["pane", "split"] for item in responses)}'

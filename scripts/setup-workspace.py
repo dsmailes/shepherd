@@ -262,14 +262,11 @@ def execute(config: dict, project: Path, herdr: str) -> int:
     conflicts = sorted(requested_names & existing_names)
     if conflicts:
         raise RuntimeError("Live agent name conflict(s): " + ", ".join(conflicts))
-    for existing in panes:
-        if not isinstance(existing, dict):
-            continue
-        pane_id = existing.get("pane_id") or existing.get("id")
-        if not pane_id:
-            raise RuntimeError("Pane inventory contains an entry without explicit identity")
-        info = json_command(herdr, ["pane", "process-info", "--pane", pane_id])
-        shell_ready(info, pane_id)
+    # Existing panes are not targets of this operation. We split only from
+    # the selected base pane and validate each newly created pane before using
+    # it. Do not inspect unrelated panes here: the coordinator may be launched
+    # from a busy Codex/Herdr pane, and Herdr focus can report a different pane
+    # than the caller that started this process.
     print(f"Using workspace {workspace}, base pane {base}, observed layout {size[0]:g}x{size[1]:g}; balanced split plan preserves focus.")
     created = []
     created_specs = []
