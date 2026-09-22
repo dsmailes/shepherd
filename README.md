@@ -40,6 +40,12 @@ agents to work on is the **target project**. Replace the example paths below wit
 your own. Keep these directories separate; the installer refuses to install the
 pack into itself.
 
+From the target project directory, install the latest pack in one line:
+
+```sh
+tmp="$(mktemp -d)" && git clone --depth 1 https://github.com/dsmailes/shepherd.git "$tmp" && "$tmp/install.sh" --here && rm -rf "$tmp"
+```
+
 ```sh
 cd /absolute/path/to/shepherd
 ./install.sh --project /absolute/path/to/project --dry-run
