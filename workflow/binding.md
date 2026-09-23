@@ -6,21 +6,24 @@ this procedure exists to prevent.
 
 ## Sequence
 
-1. **Readiness before binding.** The coordinator confirms a candidate worker's
-   readiness — ticket, role, attempt, generation, artifact root, scope — in an
-   exchange with that worker, before anything is recorded on the board.
-2. **Bind, then dispatch.** Only after the candidate worker has explicitly
-   confirmed readiness does the coordinator send one dispatch, and only then does
-   the sole Admin/board writer record the binding (role, attempt, worker, target).
-   Recording a binding ahead of that exchange is what this procedure forbids.
-3. **Delivery acknowledgement is not execution.** A worker acknowledging that it
-   received and understood a dispatch is a separate, earlier fact than the worker
-   having started, let alone finished, the work. Record these as distinct states;
-   never infer "in progress" from acknowledgement alone, or "done" from either.
+1. **Readiness probe.** The coordinator confirms the candidate's harness, readiness
+   and assignment context — ticket, role, attempt, generation, artifact root and
+   scope. A harmless identity probe may establish readiness, but must not include
+   the work assignment.
+2. **Observe and bind.** The coordinator or harness observer establishes a fresh,
+   dedicated pane/session for the assigned harness and role, confirms it is distinct
+   from every other required worker, and records the exact workspace ID, pane ID,
+   harness kind, observed session ID and live state with direct Herdr evidence. The
+   sole Admin/board writer serializes role, attempt, target and ownership generation
+   in the external manifest before dispatch. Never reuse or relabel another role's
+   pane/session.
+3. **Dispatch once.** Only after the binding is recorded does the coordinator send
+   the work once. Record delivery acknowledgement separately from completion; it
+   confirms receipt, not success.
 4. **Idle or unassigned panes stay visible, honestly labeled.** A pane that
    exists and is idle, or is merely named to match a role, must keep reporting as
-   such until there is an actual acknowledged binding for it. Tooling must reflect
-   Herdr's own observed state, never a guessed or aspirational one.
+   such until there is an actual binding for it. Tooling must reflect Herdr's own
+   observed state, never a guessed or aspirational one.
 5. **Reconcile uncertainty; never duplicate-dispatch.** If delivery is uncertain
    (timeout, ambiguous reply, silence), inspect the existing worker/session before
    doing anything else. Record the reconciliation outcome explicitly — confirmed,
@@ -58,6 +61,15 @@ creating-ticket, observed worker/session binding, quiescence, and safe-cleanup
 criteria accepted in **HERDR-010**; if those facts cannot be established, keep
 the assignment unbound or blocked and request explicit reassignment as required
 by the handoff gates.
+
+For a fresh Codex pane, first confirm it is at the interactive prompt, then send a
+harmless identity probe. Once the first prompt has caused Herdr to observe the
+session, run `herdr agent list`, `herdr api snapshot`, and
+`herdr pane get <pane-id>`. Use the explicit pane/workspace IDs in those direct
+views to record the binding before dispatch. For a fresh Claude pane, wait for its
+startup `agent_session` and record the same direct pane state. Do not use role-name
+matches from the read-only assignment report as authoritative evidence: matching
+labels across workspaces can select the wrong pane.
 
 ## Completion marker for low-observability workers
 

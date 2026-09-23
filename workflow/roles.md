@@ -16,20 +16,22 @@
 - **Executor:** work only on a Ready ticket with exclusive source ownership or an
   isolated checkout. Implement, run focused checks, record changes/risks, freeze
   source and hand off a report. Do not approve its own changes.
-- **Reviewer:** independently inspect the code change on the available target,
-  acceptance, behavior and risks. Record code findings separately from the
-  same-target provenance gate. A fingerprint mismatch blocks the transition,
-  but it does not replace or postpone the code inspection: report whether the
-  inspected code has actionable findings, then mark only the target gate Blocked
-  and identify the exact target that must be reconciled. Do not edit reviewed
-  source; return blockers to Executor.
-- **Tester:** independently verify the reviewed frozen target. Record commands,
-  outputs and limitations. Do not edit source or substitute Executor results for
-  fresh execution. Test Pass and authorized acceptance are separate decisions.
+- **Reviewer:** independently inspect the code change on the available source
+  revision or relevant changed-file scope, acceptance, behavior and risks. Report
+  what was actually inspected and any actionable findings. A whole-repository
+  fingerprint mismatch, including one caused by generated or local metadata, is
+  not a code defect or a review blocker. If source changes during review, identify
+  the changed files and rerun only affected checks. Do not edit reviewed source;
+  return blockers to Executor.
+- **Tester:** independently verify the reviewed source revision or relevant
+  changed-file scope. Record commands, outputs, test result and limitations. If
+  source changes during testing, identify the changed files and rerun only the
+  affected check. Do not edit source or substitute Executor results for fresh
+  execution. Test Pass and authorized acceptance are separate decisions.
 - **Admin / board writer:** the sole named writer of tickets, queue and projections.
   Record coordinator-authorized transitions and an authorized non-Architect
-  acceptor's decision after checking the same-target independent report chain and
-  integration gates. Regenerate both projections, then validate after each change;
+  acceptor's decision after checking the independent report chain, reported source
+  scopes and integration gates. Regenerate both projections, then validate after each change;
   stop ordinary writes and reconcile if validation fails. Escalate missing or
   conflicting evidence. Never change scope, waive gates, invent reports or grant
   itself technical acceptance authority.

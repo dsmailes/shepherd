@@ -9,13 +9,15 @@
    Critical Friend help or None, with adopted findings. Admin creates the ticket and
    queue entry. Required design completes before Ready. Resolve blocking scope
    decisions and capabilities before moving to Ready.
-3. **Preflight.** Follow `herdr.md`. Record observed bindings and evidence once in the
-   external assignment manifest, separate from worker self-visible telemetry.
-   Link each worker's own entry. Record selection reason and observed values;
-   unseen telemetry is Unavailable. A missing assigned harness or independent
-   worker blocks dispatch until explicit reassignment. Where native
-   child delegation is absent, use a fresh observed session of the assigned harness
-   if supported; never relabel an existing worker to fake independence.
+3. **Preflight.** Follow `herdr.md` and `binding.md`. Give each required role a
+   fresh dedicated pane of its assigned harness; never reuse another role's pane or
+   session. Before dispatch, confirm the exact workspace ID, pane ID, harness kind,
+   observed session ID and state from direct Herdr evidence. Record that binding and
+   its evidence in the external assignment manifest before the coordinator sends
+   work. The sole board writer serializes the assignment/generation; a missing
+   assigned harness or independent worker blocks dispatch until explicit
+   reassignment. Where native child delegation is absent, use a fresh observed
+   session of the assigned harness if supported; never relabel an existing worker.
 4. **Own source.** Classify read-only versus mutating/building. Choose isolated
    ticket branch/worktree when supported and commits are authorized, otherwise
    serialize mutable work. Use one external project/ticket artifact root for
@@ -38,8 +40,9 @@
    separate merge batch not applicable with rationale, but must run the required
    full project validation on the final target. New source changes require fresh
    review and tests. Failed integration blocks acceptance.
-8. **Accept.** Admin checks the complete independent same-target chain,
-   integration evidence and the project's user/delegated acceptance authority.
+8. **Accept.** Admin checks the complete independent review/test chain, each
+   report's inspected source scope, integration evidence and the project's
+   user/delegated acceptance authority.
    Record another authorized acceptor's explicit decision before Done; Admin cannot
    grant itself authority. Tester Pass is insufficient. Architect may not accept its
    own work. Regenerate both projections, then validate; reconcile any failure.

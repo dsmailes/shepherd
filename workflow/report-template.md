@@ -6,9 +6,10 @@ and detailed logs instead of copying the ticket or other workers' identities.
 - Binding: <external manifest link and own ticket/role/attempt/generation entry>
 - Pane ownership: <stable pane ID, role, creating ticket, ownership provenance,
   observed worker/session binding; board pane or role pane>
-- Code result: <Pass / Findings / Blocked — what was inspected and any actionable findings>
-- Target gate: <Verified / Blocked — declaration/hash comparison and reconciliation needed>
-- Verdict: <overall workflow status after the two fields above; advisory roles: findings>
+- Source inspected/tested: <commit/revision, or relevant changed-file diff and working-tree state>
+- Code/test result: <Pass / Findings / Blocked — what was inspected or tested and any actionable findings>
+- Fingerprint: <optional supporting hash/declaration; mismatch alone is not a blocker>
+- Verdict: <Pass / Findings / Blocked for the actual code or test result; advisory roles: findings>
 - Result: <changes or scope inspected; acceptance covered; actionable findings>
 - Target: <command/declaration and before/after JSON links, or immutable commit>
 - Checks: <exact commands, exit codes and output links; limitations>
@@ -26,8 +27,8 @@ copied supervisor ID. Coordinator-observed independence is still required.
 
 ## Acceptance entry (Admin records after independent role reports)
 
-- Evidence: <manifest links to distinct E/R/T reports, matching targets and required
-  integration/full validation; separate merge N/A only with rationale>
+- Evidence: <manifest links to distinct E/R/T reports, their inspected source
+  scopes and required integration/full validation; separate merge N/A only with rationale>
 - Decision: <Accept / Reject; acceptor identity, user/delegated authority, rationale,
   timestamp and any authorized waiver; Architect cannot accept its own work>
 - Board: <transition recorded, projections regenerated, validation result>

@@ -132,8 +132,9 @@ Run these steps and the following helper commands from the **target project**.
    the ID and records coordinator-observed bindings once in an external manifest.
 4. Dispatch independent Executor, Reviewer and Tester workers. Reports live in one
    repository-external ticket artifact root. Only the board writer updates state.
-5. Admin records an authorized non-Architect acceptor's decision after same-target
-   review, tests and required integration, then regenerates and validates the board.
+5. Admin records an authorized non-Architect acceptor's decision after independent
+   review, tests, reported source scope and required integration, then regenerates
+   and validates the board.
    A Tester Pass alone does not mean Done.
 
 Small tickets aim for 300–500 words and role reports for 150–300, linking shared

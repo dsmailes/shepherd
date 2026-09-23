@@ -4,8 +4,9 @@
 
 Reports and test/build output go to the ticket's named repository-external artifact
 root. Freeze source by stopping writers; the fingerprint tool does not acquire a
-lock. Record either an authorized immutable scoped commit with a clean verification
-checkout, or a content fingerprint when commits are not authorized:
+lock. Record the source revision or relevant changed-file scope actually inspected
+or tested. An authorized immutable scoped commit is preferred; a content
+fingerprint is optional supporting provenance when commits are not authorized:
 
 ```sh
 python3 scripts/source-fingerprint.py --project /path/to/project --ticket TASK-001
@@ -28,16 +29,16 @@ With `--ticket TASK-001`, the **only control exclusions** are:
 - `docs/tickets.html`
 
 No wildcard ticket, memory, plan, configuration or report exclusions exist. Omitting
-`--ticket` excludes no control paths. Capture the declaration as well as the hash.
-Reviewer and Tester rerun the same command before/after their work and require
-identical declarations and hashes. This is a provenance gate, not a substitute
-for inspecting the code. If the target does not match, complete the read-only
-code review or test inspection on the available source, record findings and
-limitations, mark only the same-target gate Blocked, and state the exact
-reconciliation needed. Stop approval at the transition; Executor must re-freeze
-and all affected approvals restart when the target changes. Read the excluded
-active ticket independently;
-acceptance/scope changes invalidate approval even when the source hash is unchanged.
+`--ticket` excludes no control paths. Capture the declaration when a fingerprint
+is used, but do not make a whole-repository hash an approval gate. Generated or
+local metadata can change without changing the code under review. Reviewer and
+Tester report the revision or relevant changed-file diff they actually inspected,
+along with findings and test results. If source changes during review or testing,
+identify the changed files and rerun only the affected check. A fingerprint
+mismatch alone is not a code defect, does not block review or testing, and does
+not justify creating another source copy or worktree solely to reconcile hashes.
+Read the excluded active ticket independently; acceptance or scope changes still
+invalidate approval even when the source hash is unchanged.
 
 Pane ownership is part of the handoff evidence: record the stable pane ID, role,
 creating ticket, ownership provenance (`ticket-created`), observed worker/session
@@ -54,8 +55,8 @@ preserved.
 | Backlog → Ready (optionally through Design) | Complete scope, acceptance, risks, skills, checks, capability and source-ownership contract; required design |
 | Ready → In Progress | Independent Executor observed and assignment acknowledged |
 | In Progress → Review | Executor report, focused checks, stable target, no active source writer |
-| Review → Test | Independent Reviewer Pass on that target, findings resolved |
-| Test → Done | Independent Tester Pass; required integration/full validation; same-target chain; explicit authorized acceptance by non-Architect acceptor |
+| Review → Test | Independent Reviewer Pass on the inspected revision or relevant changed-file scope, findings resolved |
+| Test → Done | Independent Tester Pass; required integration/full validation; reported source scope; explicit authorized acceptance by non-Architect acceptor |
 | Any active state → Blocked | Concrete reason, preserved artifacts, owner and resume condition |
 | Review/Test → In Progress | Actionable failure routed to Executor; old approvals invalidated |
 

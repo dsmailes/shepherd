@@ -85,6 +85,25 @@ prompt commands. Discovery above does not launch agents.
   success or absence of output is insufficient. Inspect starting, idle/ready,
   working, blocked, error and exited states as exposed by the installed runtime.
   Never inject work into a busy or blocked session. Investigate its actual reason.
+- Create a fresh dedicated pane for the assigned harness and role. Do not reuse
+  the Executor pane/session as Reviewer, or any worker pane/session for a second
+  required role. Use the new pane ID returned by Herdr; do not infer it from layout
+  order or a role label.
+- Confirm identity timing before dispatch. For a fresh Claude worker, wait for
+  `agent_session` to appear at startup. For a fresh Codex worker, no
+  `agent_session` before its first prompt is expected: send a harmless identity
+  probe that asks only for harness, visible worker identity and readiness, then
+  inspect the live Herdr state. Do not include assignment work in the probe.
+- After that probe, use `herdr agent list`, `herdr api snapshot`, and
+  `herdr pane get <pane-id>`. Match the exact workspace and pane IDs. Record the
+  pane ID, workspace ID, harness kind, observed `agent_session` ID and
+  `agent_status` in the external assignment manifest before dispatch. Record
+  worker-unseen identity as `Unavailable`; do not substitute it for Herdr's
+  coordinator-observed session ID. If the direct views disagree or no distinct
+  session is observed, keep the role unbound and block dispatch.
+- Use these direct Herdr views and explicit pane IDs as the identity authority.
+  The read-only assignment report matches role labels and can misattribute a pane
+  across workspaces; treat it as a convenience summary, not binding evidence.
 - Exactly one coordinator dispatches once. Link the worker's own external manifest
   entry: ticket, role, attempt, generation, target and observed binding. Record the
   delivery acknowledgement separately from completion; it confirms receipt, not
