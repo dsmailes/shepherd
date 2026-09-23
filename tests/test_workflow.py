@@ -71,6 +71,23 @@ class InstallerTests(ProjectCase):
         run(PACK / 'install.sh', '--here', cwd=self.project)
         self.dashboard('--validate')
 
+    def test_workflow_only_updates_only_shepherd_documents(self):
+        self.install()
+        instructions = self.project / 'AGENTS.md'
+        instructions.write_text('Project-specific instructions\n')
+        script = self.project / 'scripts/setup-workspace.py'
+        script_before = script.read_bytes()
+        ticket = self.project / '.tickets/queue.md'
+        ticket_before = ticket.read_bytes()
+        workflow = self.project / '.shepherd/roles.md'
+        workflow.write_text('old workflow\n')
+        result = self.install('--workflow-only')
+        self.assertIn('Workflow documents updated', result.stdout)
+        self.assertNotEqual(workflow.read_text(), 'old workflow\n')
+        self.assertEqual(instructions.read_text(), 'Project-specific instructions\n')
+        self.assertEqual(script.read_bytes(), script_before)
+        self.assertEqual(ticket.read_bytes(), ticket_before)
+
     def test_repeat_refuses_all_writes(self):
         self.install()
         instruction = self.project / 'AGENTS.md'

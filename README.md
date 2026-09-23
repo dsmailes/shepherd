@@ -87,6 +87,15 @@ cd /absolute/path/to/project
 /absolute/path/to/shepherd/install.sh --here
 ```
 
+To update only the installed workflow rules in an existing project, leaving its
+instructions, tickets, scripts and dashboards unchanged, run:
+
+```sh
+/absolute/path/to/shepherd/install.sh --project /absolute/path/to/project --workflow-only
+```
+
+Use `--dry-run` first to preview the workflow files that will be updated.
+
 ### What installation writes
 
 The installer copies `workflow/` to `.shepherd/`, the project helpers to `scripts/`,
