@@ -16,9 +16,13 @@
 - **Executor:** work only on a Ready ticket with exclusive source ownership or an
   isolated checkout. Implement, run focused checks, record changes/risks, freeze
   source and hand off a report. Do not approve its own changes.
-- **Reviewer:** independently inspect the frozen target, acceptance, behavior and
-  risks. Record Pass or Fail with actionable findings and before/after targets.
-  Do not edit reviewed source; return blockers to Executor.
+- **Reviewer:** independently inspect the code change on the available target,
+  acceptance, behavior and risks. Record code findings separately from the
+  same-target provenance gate. A fingerprint mismatch blocks the transition,
+  but it does not replace or postpone the code inspection: report whether the
+  inspected code has actionable findings, then mark only the target gate Blocked
+  and identify the exact target that must be reconciled. Do not edit reviewed
+  source; return blockers to Executor.
 - **Tester:** independently verify the reviewed frozen target. Record commands,
   outputs and limitations. Do not edit source or substitute Executor results for
   fresh execution. Test Pass and authorized acceptance are separate decisions.

@@ -30,8 +30,13 @@ With `--ticket TASK-001`, the **only control exclusions** are:
 No wildcard ticket, memory, plan, configuration or report exclusions exist. Omitting
 `--ticket` excludes no control paths. Capture the declaration as well as the hash.
 Reviewer and Tester rerun the same command before/after their work and require
-identical declarations and hashes. Stop on changes; Executor must re-freeze and
-all affected approvals restart. Read the excluded active ticket independently;
+identical declarations and hashes. This is a provenance gate, not a substitute
+for inspecting the code. If the target does not match, complete the read-only
+code review or test inspection on the available source, record findings and
+limitations, mark only the same-target gate Blocked, and state the exact
+reconciliation needed. Stop approval at the transition; Executor must re-freeze
+and all affected approvals restart when the target changes. Read the excluded
+active ticket independently;
 acceptance/scope changes invalidate approval even when the source hash is unchanged.
 
 Pane ownership is part of the handoff evidence: record the stable pane ID, role,
