@@ -31,8 +31,9 @@
 - **Admin / board writer:** the sole named writer of tickets, queue and projections.
   Record coordinator-authorized transitions and an authorized non-Architect
   acceptor's decision after checking the independent report chain, reported source
-  scopes and integration gates. Regenerate both projections, then validate after each change;
-  stop ordinary writes and reconcile if validation fails. Escalate missing or
+  scopes and integration gates. Update the ticket, queue and generated dashboard
+  projections together, then run one dashboard validation; stop ordinary writes
+  and reconcile if validation fails. Escalate missing or
   conflicting evidence. Never change scope, waive gates, invent reports or grant
   itself technical acceptance authority.
 

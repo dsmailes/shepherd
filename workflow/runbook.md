@@ -26,8 +26,11 @@
    and only held around actually contended commands.
 5. **Execute.** The board writer moves Ready to In Progress when the Executor
    starts. Executor implements, runs focused checks and writes an external report.
-   No automatic commits or pushes. Freeze one target under `handoffs.md`; the board
-   writer moves to Review after the implementation gate passes.
+   No automatic commits or pushes. Under `handoffs.md`, record the source revision
+   or relevant changed-file scope and confirm there is no active source writer; a
+   fingerprint is optional supporting provenance. Do not create a source copy or
+   worktree solely to reconcile hashes. The board writer moves to Review after the
+   implementation gate passes.
 6. **Review and verify.** Coordinator dispatches independent Reviewer, then Tester
    only after Review Pass. The board writer moves Review to Test. Failed work
    returns to In Progress through the writer; fix with Executor and invalidate old
@@ -45,14 +48,15 @@
    user/delegated acceptance authority.
    Record another authorized acceptor's explicit decision before Done; Admin cannot
    grant itself authority. Tester Pass is insufficient. Architect may not accept its
-   own work. Regenerate both projections, then validate; reconcile any failure.
+   own work. Update the ticket, queue and generated dashboard projections
+   together, then run one dashboard validation; reconcile any failure.
    Capture evidence before cleaning only named disposable worktrees/artifacts;
    retain failed/blocked artifacts. Write durable findings to `.memory/` only.
 
 9. **Clean up owned panes.** After Admin records completion, capture the final
-   report/fingerprint and confirm the worker/session is quiescent. Generate the
-   read-only close plan with `scripts/pane-lifecycle.py`; close only role panes
-   whose observed `creating_ticket` exactly matches the ticket and whose
+   reports and source-scope evidence, then confirm the worker/session is quiescent.
+   Generate the read-only close plan with `scripts/pane-lifecycle.py`; close only
+   role panes whose observed `creating_ticket` exactly matches the ticket and whose
    ownership is `ticket-created`. Recheck each pane ID immediately before a
    close. Keep ticket/role board panes until Done. On any uncertainty or partial
    failure, stop, preserve diagnostics and reconcile; never retry blindly.
@@ -91,8 +95,9 @@ the user or a previously authorized coordinator may explicitly hand over ownersh
 Record old/new owner identities, reason and a new ownership generation. Require
 prior-owner acknowledgement or confirmed quiescence before another writer starts.
 If neither is possible, remain Blocked. The new writer reconciles the live tickets
-and queue, frozen source target, all active/ambiguous attempts and role/session
-history before resuming. Reconfiguration alone is not a handover.
+and queue, reported source revision or changed-file scope, all active/ambiguous
+attempts and role/session history before resuming. Reconfiguration alone is not a
+handover.
 
 Generation and attempt IDs are cooperative metadata, not authenticated fencing.
 Shepherd supplies no atomic runtime lock, quorum or protection against a dishonest
@@ -121,3 +126,18 @@ correction rounds; stop earlier on unchanged failure or no new evidence. Report
 observed token usage when exposed, otherwise elapsed time and round count; never
 invent usage or enforcement. The coordinator chooses proportional verification and
 ends out-of-scope discussion without waiving role independence or required gates.
+
+## Concise status and stop guidance
+
+- Run setup and transport preflight once per ticket. Repeat them only after a
+  configuration, CLI, harness or environment change; do not loop on an accepted
+  result that has not changed.
+- After a single dispatch, record delivery acknowledgement separately, then
+  monitor at bounded intervals appropriate to the work. A status read is not a
+  completion report; inspect worker output and artifacts when the task settles.
+- If a worker is unavailable, blocked on approval, or delivery is ambiguous, stop
+  the role, preserve its evidence and record the resume condition. Reconcile the
+  existing attempt before any reassignment; never redispatch just to refresh status.
+- Stop after two correction rounds, unchanged repeated failure, missing capability,
+  or no new evidence. Mark the concrete blocker and owner rather than repeating
+  setup, prompts or dashboard generation.

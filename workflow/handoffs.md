@@ -1,12 +1,13 @@
-# Portable handoffs and frozen targets
+# Portable handoffs and source scope
 
 ## Identify source
 
 Reports and test/build output go to the ticket's named repository-external artifact
-root. Freeze source by stopping writers; the fingerprint tool does not acquire a
-lock. Record the source revision or relevant changed-file scope actually inspected
-or tested. An authorized immutable scoped commit is preferred; a content
-fingerprint is optional supporting provenance when commits are not authorized:
+root. Stop active source writes before review or testing; the fingerprint tool does
+not acquire a lock. Record the source revision or relevant changed-file scope
+actually inspected or tested. An authorized immutable scoped commit is preferred;
+a content fingerprint is optional supporting provenance when commits are not
+authorized:
 
 ```sh
 python3 scripts/source-fingerprint.py --project /path/to/project --ticket TASK-001
@@ -65,7 +66,8 @@ its own concise report using `report-template.md`, linking the shared external
 assignment manifest. Coordinator-observed bindings establish independence; unseen
 worker-self-visible identity/model telemetry is Unavailable and does not require
 copying another session's ID. Admin records acceptance from the authorized acceptor,
-regenerates projections and validates. Record any authorized gate waiver with
+updates the ticket, queue and generated dashboard projections together, then runs
+one dashboard validation. Record any authorized gate waiver with
 who, why and remaining risk; role independence and truthful evidence are never
 waived or silently downgraded. A missing independent session blocks the gate.
 Resuming Blocked requires rechecking the original destination gate.
