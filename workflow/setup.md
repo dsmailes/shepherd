@@ -39,6 +39,27 @@ For automation, declare the roster explicitly. Omit `--accept` to preview withou
 writing. Names are user-defined, case-sensitive for references and unique without
 regard to case; they are not a fixed catalog of models or supported runtimes.
 
+The shortest complete first setup for a Herdr workspace is:
+
+```sh
+python3 scripts/setup-shepherd.py --project . \
+  --harness codex --harness claude --harness agy \
+  --launcher codex=codex --launcher claude=claude --launcher agy=agy \
+  --kind codex=codex --kind claude=claude --kind agy=agy \
+  --accept
+python3 scripts/doctor-shepherd.py --project .
+```
+
+Replace the roster names and values with the commands and Herdr kinds installed
+on the machine. The left side of every `--launcher` and `--kind` declaration
+must exactly match a `--harness` name. `--launcher` values are executable
+commands; `--kind` values come from `herdr agent start --help`. Setup accepts a
+configuration without these optional declarations, but `setup-workspace.py
+--accept` cannot start assigned role panes until every assigned harness has both
+values. To repair an already accepted configuration, repeat the command with
+`--force`; this replaces only `.shepherd/project.json` and does not change
+tickets or running workers.
+
 ```sh
 python3 scripts/setup-shepherd.py --project . --harness Codex --harness Claude --harness Antigravity
 python3 scripts/setup-shepherd.py --project . --harness MyAgent --harness OtherAgent --strength review=MyAgent --assign admin=OtherAgent --assign sounding-board=MyAgent --assign critical-friend=OtherAgent --accept

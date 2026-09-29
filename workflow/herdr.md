@@ -46,6 +46,19 @@ only panes created by this run. Pane creation and launches are sequential;
 failures stop without a duplicate retry and include created pane IDs plus CLI
 diagnostics. Unobserved model telemetry is reported as `Unavailable`.
 
+For a board-only operation, use the installed helper from an active Herdr shell:
+
+```sh
+python3 scripts/open-ticket-board.py --project .
+python3 scripts/open-ticket-board.py --project . --accept
+```
+
+The first command previews; the second splits one pane from the current pane and
+launches the read-only terminal board with `--watch`. It preserves focus and does
+not create role panes. Use `--direction down` when the current pane should split
+vertically instead of the default `right` split. A PermissionDenied result means
+the command is outside a reachable Herdr session; reconnect Herdr before retrying.
+
 Each dispatched role gets a dedicated pane and observed session binding. Optional
 roles get a pane only when the ticket activates them. Ticket and role boards are
 separate read-only panes. The setup helper records the created pane IDs in its

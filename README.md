@@ -71,6 +71,26 @@ identities or readiness. Use `--help` for noninteractive options. If the
 target is not already a Git repository, initialize it before using source
 fingerprints. Installation does not initialize Git, commit files or push anything.
 
+For a first setup that is ready for Herdr workspace creation, use explicit
+harness, launcher and Herdr-kind mappings. The names on the left must exactly
+match the harness names you declare:
+
+```sh
+python3 scripts/setup-shepherd.py --project . \
+  --harness codex --harness claude --harness agy \
+  --launcher codex=codex --launcher claude=claude --launcher agy=agy \
+  --kind codex=codex --kind claude=claude --kind agy=agy \
+  --accept
+python3 scripts/doctor-shepherd.py --project .
+```
+
+The launcher value is an executable command available on `PATH`; the kind value
+must be one of the kinds shown by `herdr agent start --help`. If you use the
+interactive prompts, enter the same mappings at both mapping prompts, or press
+Enter to leave them Unverified. An accepted allocation without these mappings
+can be repaired with the same command plus `--force`; do that before running
+`setup-workspace.py --accept`.
+
 The workspace helper creates the main Architect pane, lazygit, and read-only
 Ticket and Role Boards. Role panes are ticket-scoped and deferred by default;
 activate only the roles needed for the current ticket with repeated options such
@@ -82,6 +102,18 @@ from the actual Herdr environment (`HERDR_ENV=1`). It verifies installed Herdr
 help and explicit pane/workspace identities, preserves focus where possible,
 stops on a failed launch without retrying, and reports unobserved model
 telemetry as `Unavailable`.
+
+To open only a read-only Ticket Board in a new Herdr pane, use the board helper
+from an active Herdr shell. It previews by default; add `--accept` to create the
+pane. `--direction right` is the default; use `--direction down` when that fits
+the current layout better:
+
+```sh
+python3 scripts/open-ticket-board.py --project .
+python3 scripts/open-ticket-board.py --project . --accept
+```
+
+This helper does not create role panes or change the rest of the layout.
 
 Alternatively, install from the target directory with an absolute pack path:
 

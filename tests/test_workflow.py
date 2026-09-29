@@ -59,6 +59,7 @@ class InstallerTests(ProjectCase):
         self.assertTrue((self.project / 'docs/tickets.md').is_file())
         self.assertFalse((self.project / '.shepherd/project.json').exists())
         self.assertTrue((self.project / 'scripts/doctor-shepherd.py').is_file())
+        self.assertTrue((self.project / 'scripts/open-ticket-board.py').is_file())
         names = sorted(p.name for p in (self.project / '.tickets').iterdir())
         self.assertEqual(names, ['README.md', 'queue.md', 'template.md'])
         self.assertFalse((self.project / 'docs/agent-plans').exists())
@@ -298,6 +299,15 @@ class WorkspaceSetupTests(ProjectCase):
         self.assertIn('Lazygit', result.stdout)
         self.assertIn('Ticket Board', result.stdout)
         self.assertIn('Role Board', result.stdout)
+        self.assertEqual(before, {p.relative_to(self.project): p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
+
+    def test_ticket_board_helper_preview_is_mutation_free(self):
+        self.install()
+        before = {p.relative_to(self.project): p.read_bytes() for p in self.project.rglob('*') if p.is_file()}
+        result = run(PYTHON, self.project / 'scripts/open-ticket-board.py',
+                     '--project', self.project)
+        self.assertIn('Ticket board preview', result.stdout)
+        self.assertIn('No live changes', result.stdout)
         self.assertEqual(before, {p.relative_to(self.project): p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
 
     def test_preview_defers_unrequested_role_panes(self):
