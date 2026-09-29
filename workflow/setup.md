@@ -15,8 +15,24 @@ as Unassigned when absent), and makes no changes. It reports persisted harness
 choices only; it does not identify live workers or sessions, probe runtimes, or
 establish readiness. `--show` cannot be combined with setup options.
 
-Interactive setup asks which harnesses/agents the user can access, optional tools
-and limits, role strengths, and optional explicit launcher/Herdr kind mappings. It shows the suggested map, permits role overrides,
+Interactive setup asks which harnesses/agents the user can access, explains that
+Design is listed but only activated when a ticket selects it, and that Sounding
+Board and Critical Friend remain unassigned unless explicitly added. Admin is
+the `board` role; `admin` is accepted as an input alias. Optional role assignments
+are entered later as comma-separated `role=harness` overrides. It then asks for optional
+tools and limits, role strengths, and explicit launcher/Herdr kind mappings.
+For the role-strengths prompt, enter optional declared aptitudes such as
+`review=Claude,design=Claude,testing=Antigravity`, or press Enter. These are
+advice only and do not assign roles; use the later `role=harness` overrides for
+actual assignments. For the launcher prompt, enter the executable command for
+each declared harness. The left side must exactly match the harness name entered
+in the roster, such as `Codex=codex,Claude=claude,Antigravity=agy`, or press
+Enter to leave launchers Unverified. The following Herdr-kind prompt is a
+separate mapping with the same exact-name rule; it identifies the installed Herdr kind, not
+the model. For the capabilities/tools/budget/preferences prompt, enter short constraints or
+preferences such as `Swift, UI testing, local models, low cost`, or press Enter
+to leave it blank. This text informs later agent-led advice; it does not configure
+tools, select a model, or probe runtime capability. It shows the suggested map, permits role overrides,
 then asks for acceptance before writing `.shepherd/project.json`.
 
 For automation, declare the roster explicitly. Omit `--accept` to preview without

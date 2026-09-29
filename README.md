@@ -53,14 +53,18 @@ cd /absolute/path/to/shepherd
 
 # Continue from the target project, using its installed helpers.
 cd /absolute/path/to/project
+# First run: declare harnesses and accept the saved allocation.
 python3 scripts/setup-shepherd.py --project .
+# Later: inspect an allocation that has already been accepted.
 python3 scripts/setup-shepherd.py --project . --show
 python3 scripts/render-ticket-dashboard.py --project . --terminal
 python3 scripts/setup-workspace.py --project .
 ```
 
 Setup interactively asks which harnesses you can access, offers role assignments
-and saves your accepted choices. `--show` displays the saved role-to-harness
+and an optional preferences field (for example `Swift, UI testing, local models,
+low cost`), then saves your accepted choices. Press Enter when you have no
+preferences to add. `--show` displays the saved role-to-harness
 allocations without writing files or checking runtime workers; absent optional
 roles appear as Unassigned. These persisted choices do not establish live worker
 identities or readiness. Use `--help` for noninteractive options. If the

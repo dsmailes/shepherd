@@ -79,7 +79,11 @@ def apply_launcher_mappings(config, launchers, kinds):
             owner, separator, value = declaration.partition("=")
             owner, value = owner.strip(), value.strip()
             if not separator or owner not in entries or not value or any(ord(c) < 32 for c in value):
-                raise ValueError(f"Use declared-harness=value for {field}; owner must be accessible")
+                declared = ", ".join(entries) or "none"
+                raise ValueError(
+                    f"Use an exact declared harness name=value for {field}; "
+                    f"declared harnesses: {declared}"
+                )
             entries[owner][field] = value
     return config
 
@@ -120,7 +124,10 @@ def show_allocation(path):
     try:
         config = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
-        raise ValueError(f"No accepted setup configuration found at {path}") from error
+        raise ValueError(
+            f"No accepted setup configuration found at {path}; "
+            "run setup without --show first"
+        ) from error
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ValueError(f"Cannot read valid setup configuration at {path}: {error}") from error
     if (not isinstance(config, dict) or config.get("schema_version") != 1
@@ -184,13 +191,30 @@ def main():
         if interactive:
             print("Which coding harnesses/agents can you access? Enter names in preference order.")
             roster = input("Names, separated by commas: ").split(",")
-            preferences = input("Optional capabilities, tools, budget or role preferences: ").strip()
-            print("Optional help: design (allocated by default), sounding_board, critical_friend; admin aliases board.")
-            strengths = input("Known role strengths (role=harness, comma-separated), or Enter: ").strip()
+            preferences = input(
+                "Optional capabilities, tools, budget or role preferences "
+                "(for example: Swift, UI testing, local models, low cost; or press Enter): "
+            ).strip()
+            print(
+                "Optional role allocation: design is listed by default but is only used "
+                "when a ticket selects it; sounding_board and critical_friend remain "
+                "unassigned unless you add them. Admin is the board role (alias: admin). "
+                "You will assign optional roles at the later overrides prompt."
+            )
+            strengths = input(
+                "Optional role strengths, not assignments (for example: "
+                "review=Claude,design=Claude,testing=Antigravity; or press Enter): "
+            ).strip()
             if strengths:
                 args.strength.extend(strengths.split(","))
-            launchers = input("Known launchers (harness=executable, comma-separated), or Enter for Unverified: ").strip()
-            kinds = input("Known Herdr kinds (harness=kind, comma-separated), or Enter for Unverified: ").strip()
+            launchers = input(
+                "Known launchers (use the exact names from the roster, e.g. "
+                "Codex=codex,Claude=claude,Antigravity=agy; or press Enter): "
+            ).strip()
+            kinds = input(
+                "Known Herdr kinds (use the exact names from the roster, e.g. "
+                "Codex=codex,Claude=claude,Antigravity=agy; or press Enter): "
+            ).strip()
             if launchers:
                 args.launcher.extend(launchers.split(","))
             if kinds:
@@ -203,7 +227,10 @@ def main():
         if preferences:
             print("Preferences are recorded for agent-led advice/preflight; this helper does not infer capabilities.")
         if interactive:
-            edits = input("Optional overrides (role=harness separated by commas), or Enter: ").strip()
+            edits = input(
+                "Optional overrides (for example: sounding_board=Claude,"
+                "critical_friend=Codex), or press Enter: "
+            ).strip()
             if edits:
                 config = propose(roster, [*args.strength, *overrides, *edits.split(",")])
                 apply_launcher_mappings(config, args.launcher, args.kind)
