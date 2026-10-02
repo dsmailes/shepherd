@@ -22,6 +22,14 @@ For a separately prepared frozen source directory without Git, use `--snapshot`;
 this covers all files, including ignored files, except root `.git` administration.
 Do not use snapshot mode to disguise an actively changing project directory.
 
+While a ticket target is frozen for review or testing, do not edit any tracked file
+outside that ticket's control paths. This includes coordinator files, workflow
+notes, configuration and generated project files; the fingerprint covers the whole
+tree apart from the documented control exclusions. Such an edit can make the
+Reviewer or Tester see a changed target. Queue the unrelated change for a later
+ticket until the current ticket reaches Done, or identify the changed file and
+rerun only the affected check after the target is no longer frozen.
+
 With `--ticket TASK-001`, the **only control exclusions** are:
 
 - `.tickets/TASK-001.md`

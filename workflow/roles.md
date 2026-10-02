@@ -9,7 +9,8 @@
   Architect; do not quietly expand scope.
 - **Critical Friend (optional):** challenge assumptions, identify downsides and
   failure modes, and propose mitigations or reasons to choose another approach.
-  Advice has no veto or acceptance authority.
+  It may run a read-only brief pre-mortem after the Architect writes the Executor
+  brief and before dispatch. Advice has no veto or acceptance authority.
 - **Designer (optional):** provide actionable specifications, flows, interaction
   or visual decisions through a distinct worker. When selected as required, finish
   the design deliverable before Ready and implementation.

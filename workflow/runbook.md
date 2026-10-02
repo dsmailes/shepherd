@@ -5,10 +5,13 @@
    writer scans `.tickets/*.md` for the next unused numeric ID, including completed
    tickets. Tiny questions/typos may skip tickets; nontrivial work uses them.
 2. **Prepare.** Architect proposes problem, scope, acceptance, risks, skill context,
-   verification and role assignment. Record optional Designer, Sounding Board and
-   Critical Friend help or None, with adopted findings. Admin creates the ticket and
-   queue entry. Required design completes before Ready. Resolve blocking scope
-   decisions and capabilities before moving to Ready.
+   verification and role assignment. Write the Executor brief to the external
+   artifact root and dispatch it with a one-line pointer. An optional Critical
+   Friend may run a read-only brief pre-mortem before dispatch; adopt findings in
+   the brief and ticket, or record that the ticket is trivial and skipped it.
+   Record optional Designer and Sounding Board help or None. Admin creates the
+   ticket and queue entry. Required design completes before Ready. Resolve
+   blocking scope decisions and capabilities before moving to Ready.
 3. **Preflight.** Follow `herdr.md` and `binding.md`. Give each required role a
    fresh dedicated pane of its assigned harness; never reuse another role's pane or
    session. Before dispatch, confirm the exact workspace ID, pane ID, harness kind,
@@ -25,18 +28,24 @@
    concurrent source edits during checks. Platform-specific leases are optional
    and only held around actually contended commands.
 5. **Execute.** The board writer moves Ready to In Progress when the Executor
-   starts. Executor implements, runs focused checks and writes an external report.
-   No automatic commits or pushes. Under `handoffs.md`, record the source revision
-   or relevant changed-file scope and confirm there is no active source writer; a
-   fingerprint is optional supporting provenance. Do not create a source copy or
-   worktree solely to reconcile hashes. The board writer moves to Review after the
-   implementation gate passes.
+   starts. Executor implements, runs focused checks only and writes an external
+   report. Run `scripts/verify-evidence.py verify-executor` over the evidence before
+   dispatching the next role and link its summary. No automatic commits or pushes.
+   Under `handoffs.md`, record the source revision or relevant changed-file scope
+   and confirm there is no active source writer; a fingerprint is optional
+   supporting provenance. Do not create a source copy or worktree solely to
+   reconcile hashes. The board writer moves to Review after the implementation
+   gate passes.
 6. **Review and verify.** Coordinator dispatches independent Reviewer, then Tester
-   only after Review Pass. The board writer moves Review to Test. Failed work
-   returns to In Progress through the writer; fix with Executor and invalidate old
-   review/test approval when source changes. Reuse the artifact root. Limit to two
-   correction rounds; stop earlier for unchanged repeated failure or missing
-   capability. Preserve diagnostics and record Blocked with the resume condition.
+   only after Review Pass. The Reviewer reports the inspected scope. The Tester
+   runs the full required matrix once on the frozen target, checks that tests
+   actually ran (a zero-test filter match is a failure), and runs
+   `scripts/verify-evidence.py verify-tester` before handoff. Link both verifier
+   summaries. The board writer moves Review to Test. Failed work returns to In
+   Progress through the writer; fix with Executor and invalidate old review/test
+   approval when source changes. Reuse the artifact root. Limit to two correction
+   rounds; stop earlier for unchanged repeated failure or missing capability.
+   Preserve diagnostics and record Blocked with the resume condition.
 7. **Integrate.** With isolated ticket commits, integrate only reviewed commits and
    run one full required matrix on the resulting integration commit. Record both
    ticket and integration targets. Serialized single-target work can mark a

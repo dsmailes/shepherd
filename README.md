@@ -115,6 +115,10 @@ python3 scripts/open-ticket-board.py --project . --accept
 
 This helper does not create role panes or change the rest of the layout.
 
+The read-only evidence verifier is documented in `.shepherd/verify-evidence.md`.
+It checks external Executor and Tester logs, changed-file scope, silent-failure
+patterns, protected files and zero-test reruns without editing the project.
+
 Alternatively, install from the target directory with an absolute pack path:
 
 ```sh
